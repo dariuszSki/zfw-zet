@@ -1,0 +1,186 @@
+---
+name: release
+
+on:
+  push:
+    branches:
+      - main
+env:
+  APP_NAME: 'zfw-zet'
+  MAINTAINER: 'NetFoundry'
+  DESC: 'An ebpf based statefull fw and ziti edge tunnel'
+
+jobs: 
+  build_amd64_release:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    strategy:
+      matrix:
+        goos: [linux]
+        ziti_type: [router]
+        goarch: [amd64]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+          
+      - name: Install Packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get upgrade -yqq
+          sudo apt-get install -y jq 
+      
+      - name: Get version
+        run: echo "version=`jq -r .version files/config.json`" >> $GITHUB_OUTPUT
+        id: version
+
+      - name: Deb directory
+        run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+        id: deb_dir
+        
+      - name: Deb Object File
+        run: |
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
+          touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+
+      - name: Set Deb Predepends
+        if: ${{ matrix.ziti_type == 'router' }}
+        run: |
+          echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo 'Pre-Depends: zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d    
+          
+      - name: Build Deb package    
+        run: |
+          dpkg-deb --build -Z gzip --root-owner-group ${{ steps.deb_dir.outputs.deb_dir }}
+           
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
+          path: |
+            ./*.deb
+  
+  # build_arm64_release:
+  #   runs-on: [self-hosted, linux, ARM64]
+  #   outputs:
+  #     version: ${{ steps.version.outputs.version }}
+  #   strategy:
+  #     matrix: 
+  #       goos: [linux]
+  #       ziti_type: [router]
+  #       goarch: [arm64]
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v4
+          
+  #     - name: Install Packages
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get upgrade -yqq
+  #         sudo apt-get install -y jq 
+      
+  #     - name: Get version
+  #       run: echo "version=`jq -r .version files/config.json`" >> $GITHUB_OUTPUT
+  #       id: version
+
+  #     - name: Deb directory
+  #       run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+  #       id: deb_dir
+        
+  #     - name: Deb Object File
+  #       run: |
+  #         mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
+  #         touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+  #         mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+
+  #     - name: Build deb package    
+  #       run: |
+  #         dpkg-deb --build -Z gzip --root-owner-group ${{ steps.deb_dir.outputs.deb_dir }}
+                      
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
+  #         path: |
+  #           ./*.deb
+          
+  deploy_release:
+    runs-on: ubuntu-22.04
+    needs:
+      - build_amd64_release
+      # - build_arm64_release
+    strategy:
+      matrix:
+        goos: [linux]
+    steps:
+      - name: Create release
+        uses: ncipollo/release-action@v1.14.0
+        id: release
+        with:
+          draft: false
+          prerelease: false
+          tag: v${{ needs.build_amd64_release.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          
+  deploy_packages:
+    runs-on: ubuntu-22.04
+    needs:
+      - build_amd64_release
+      # - build_arm64_release
+      - deploy_release
+    strategy:
+      matrix:
+        goos: [linux]
+        ziti_type: [tunnel, router]
+        goarch: [amd64, arm64]
+        pkg_type: [deb, rpm]
+        distro_name: [focal, jammy, noble]
+
+    steps:
+      - name: download x86 artifacts
+        if: ${{ (matrix.goarch == 'amd64') && (matrix.pkg_type != 'deb') }}
+        uses: actions/download-artifact@v4
+        with:
+          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
+      # - name: download arm64 artifacts
+      #   if: ${{ (matrix.goarch == 'arm64') && (matrix.pkg_type == 'deb') }}
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
+      - name: Upload built deb artifacts
+        if: ${{ matrix.pkg_type == 'deb'}}
+        uses: svenstaro/upload-release-action@2.9.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          file: ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
+          release_name: ${{ needs.build_amd64_release.outputs.version }}
+          tag: v${{ needs.build_amd64_release.outputs.version }}
+      # - name: Configure jFrog CLI
+      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+      #   uses: jfrog/setup-jfrog-cli@v4
+      #   env:
+      #     JF_USER: ${{ secrets.JF_USER }}
+      #     JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+      # - name: Upload DEB to Artifactory with jFrog CLI
+      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+      #   shell: bash
+      #   run: >
+      #     jf rt upload
+      #     ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}-${{ needs.build_amd64_release.outputs.version }}.x86_64.${{ matrix.pkg_type }}
+      #     netfoundry-deb-stable/pool/zfw-router/${{ matrix.distro_name }}/${{ matrix.goarch }}/
+      #     --deb=${{ matrix.distro_name }}/main/${{ matrix.goarch }} 
+      #     --url https://netfoundry.jfrog.io/artifactory/
+      #     --recursive=false
+      #     --flat=true 
