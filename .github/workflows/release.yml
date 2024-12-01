@@ -52,8 +52,7 @@ jobs:
       - name: Set Deb Predepends
         if: ${{ matrix.ziti_type == 'router' }}
         run: |
-          echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          echo 'Pre-Depends: zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7), zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d    
           
       - name: Build Deb package    
