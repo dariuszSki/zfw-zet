@@ -144,7 +144,6 @@ jobs:
         ziti_type: [router]
         goarch: [amd64, arm64]
         pkg_type: [deb]
-        distro_name: [focal, jammy, noble]
 
     steps:
       - name: download x86 artifacts
