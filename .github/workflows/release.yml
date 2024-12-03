@@ -86,7 +86,7 @@ jobs:
         id: version
 
       - name: Deb directory
-        run: echo "deb_dir=${{ env.APP_NAME }}-${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+        run: echo "deb_dir=${{ env.APP_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
         id: deb_dir
         
       - name: Deb Object File
@@ -195,7 +195,7 @@ jobs:
             curl -Ls  "$(jq -r .browser_download_url <<< "$asset")" -H "Accept: application/vnd.github.v3+json" --output ./"$(jq -r .name <<< "$asset")"
             ls -l ./
       #     jf rt upload /
-      #     ./${{ env.APP_NAME }}-${{ needs.build_amd64_release.outputs.version }}.${{ matrix.goarch }}.${{ matrix.pkg_type }} /
+      #     ./${{ env.APP_NAME }}_${{ needs.build_amd64_release.outputs.version }}.${{ matrix.goarch }}.${{ matrix.pkg_type }} /
       #     netfoundry-deb-stable/pool/zfw-zet/${{ matrix.distro_name }}/${{ matrix.goarch }} /
       #     --deb=${{ matrix.distro_name }}/main/${{ matrix.goarch }} /
       #     --url https://netfoundry.jfrog.io/artifactory/ /
