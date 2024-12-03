@@ -146,7 +146,7 @@ jobs:
         pkg_type: [deb]
 
     steps:
-      - name: download x86 artifacts
+      - name: download amd64 artifacts
         if: ${{ (matrix.goarch == 'amd64') && (matrix.pkg_type == 'deb') }}
         uses: actions/download-artifact@v4
         with:
@@ -165,31 +165,40 @@ jobs:
           file: ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
           release_name: ${{ needs.build_amd64_release.outputs.version }}
           tag: v${{ needs.build_amd64_release.outputs.version }}
-  # upload_jfrog:
-  #   runs-on: ubuntu-22.04
-  #   needs:
-  #     - build_amd64_release
-  #     - build_arm64_release
-  #     - deploy_release
-  #   strategy:
-  #     matrix:
-  #       goos: [linux]
-  #       ziti_type: [router]
-  #       goarch: [amd64, arm64]
-  #       pkg_type: [deb]
-  #       distro_name: [focal, jammy, noble]
-      # - name: Configure jFrog CLI
-      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
-      #   uses: jfrog/setup-jfrog-cli@v4
-      #   env:
-      #     JF_USER: ${{ secrets.JF_USER }}
-      #     JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
-      # - name: Upload DEB to Artifactory with jFrog CLI
-      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
-      #   shell: bash
-      #   run: >
+
+  upload_jfrog:
+    runs-on: ubuntu-22.04
+    needs:
+      - build_amd64_release
+      - deploy_packages
+    strategy:
+      matrix:
+        goos: [linux]
+        ziti_type: [router]
+        goarch: [amd64, arm64]
+        pkg_type: [deb]
+        distro_name: [focal, jammy, noble]
+    steps:
+      - name: Install Packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get upgrade -yqq
+          sudo apt-get install -y jq 
+      - name: Configure jFrog CLI
+        if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_USER: ${{ secrets.JF_USER }}
+          JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+      - name: Upload DEB to Artifactory with jFrog CLI
+        if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+        shell: bash
+        run: >
+            asset=$(gh api /repos/dariuszski/zfw-zet/releases --jq '( last ((.[].assets | sort_by(.created_at)).[] | select(.name | endswith("${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}"))))')
+            curl -Ls  "$(jq -r .browser_download_url <<< "$asset")" -H "Accept: application/vnd.github.v3+json" --output ./"$(jq -r .name <<< "$asset")"
+            ls -l ./
       #     jf rt upload
-      #     ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}-${{ needs.build_amd64_release.outputs.version }}.x86_64.${{ matrix.pkg_type }}
+      #     ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}-${{ needs.build_amd64_release.outputs.version }}.${{ matrix.goarch }}.${{ matrix.pkg_type }}
       #     netfoundry-deb-stable/pool/zfw-router/${{ matrix.distro_name }}/${{ matrix.goarch }}/
       #     --deb=${{ matrix.distro_name }}/main/${{ matrix.goarch }} 
       #     --url https://netfoundry.jfrog.io/artifactory/
