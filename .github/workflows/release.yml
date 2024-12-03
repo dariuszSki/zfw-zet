@@ -46,12 +46,12 @@ jobs:
           echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          mkdir ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/etc/systemd/system/ziti-edge-tunnel.service.d
 
       - name: Set Deb Predepends
         run: |
           echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7), zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d    
+          cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/etc/systemd/system/ziti-edge-tunnel.service.d  
           
       - name: Build Deb package    
         run: |
@@ -98,7 +98,12 @@ jobs:
           echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/etc/systemd/system/ziti-edge-tunnel.service.d
+      
+      - name: Set Deb Predepends
+        run: |
+          echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7), zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/etc/systemd/system/ziti-edge-tunnel.service.d   
 
       - name: Build deb package    
         run: |
@@ -180,13 +185,13 @@ jobs:
           sudo apt-get upgrade -yqq
           sudo apt-get install -y jq 
       # - name: Configure jFrog CLI
-      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+      #   if: ${{ matrix.pkg_type == 'deb' }}
       #   uses: jfrog/setup-jfrog-cli@v4
       #   env:
       #     JF_USER: ${{ secrets.JF_USER }}
       #     JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
       - name: Upload DEB to Artifactory with jFrog CLI
-        if: ${{ matrix.pkg_type == 'deb'}}
+        if: ${{ matrix.pkg_type == 'deb' }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
