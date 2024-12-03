@@ -163,7 +163,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          file: ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
+          file: ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.distro_name }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
           release_name: ${{ needs.build_amd64_release.outputs.version }}
           tag: v${{ needs.build_amd64_release.outputs.version }}
       # - name: Configure jFrog CLI
