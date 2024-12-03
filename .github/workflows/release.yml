@@ -184,12 +184,12 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get upgrade -yqq
           sudo apt-get install -y jq 
-      - name: Configure jFrog CLI
-        if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          JF_USER: ${{ secrets.JF_USER }}
-          JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+      # - name: Configure jFrog CLI
+      #   if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+      #   uses: jfrog/setup-jfrog-cli@v4
+      #   env:
+      #     JF_USER: ${{ secrets.JF_USER }}
+      #     JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
       - name: Upload DEB to Artifactory with jFrog CLI
         if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
         env:
