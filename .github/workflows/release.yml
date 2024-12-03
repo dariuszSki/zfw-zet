@@ -18,7 +18,6 @@ jobs:
     strategy:
       matrix:
         goos: [linux]
-        ziti_type: [router]
         goarch: [amd64]
     steps:
       - name: Check out code
@@ -35,14 +34,14 @@ jobs:
         id: version
 
       - name: Deb directory
-        run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+        run: echo "deb_dir=${{ env.APP_NAME }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
         id: deb_dir
         
       - name: Deb Object File
         run: |
           mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
           touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Package: ${{ env.APP_NAME }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
@@ -50,7 +49,6 @@ jobs:
           mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
 
       - name: Set Deb Predepends
-        if: ${{ matrix.ziti_type == 'router' }}
         run: |
           echo 'Pre-Depends: ziti-edge-tunnel (>= 1.2.7), zfw-router (>= 0.9.4)' >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           cp -p files/10-run-as-root.conf ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d    
@@ -61,7 +59,7 @@ jobs:
            
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
+          name: artifact-${{ matrix.goarch }}-deb
           path: |
             ./*.deb
   
@@ -72,7 +70,6 @@ jobs:
     strategy:
       matrix: 
         goos: [linux]
-        ziti_type: [router]
         goarch: [arm64]
     steps:
       - name: Check out code
@@ -89,14 +86,14 @@ jobs:
         id: version
 
       - name: Deb directory
-        run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+        run: echo "deb_dir=${{ env.APP_NAME }}-${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
         id: deb_dir
         
       - name: Deb Object File
         run: |
           mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
           touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Package: ${{ env.APP_NAME }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
@@ -109,7 +106,7 @@ jobs:
                       
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
+          name: artifact-${{ matrix.goarch }}-deb
           path: |
             ./*.deb
           
@@ -141,7 +138,6 @@ jobs:
     strategy:
       matrix:
         goos: [linux]
-        ziti_type: [router]
         goarch: [amd64, arm64]
         pkg_type: [deb]
 
@@ -150,19 +146,19 @@ jobs:
         if: ${{ (matrix.goarch == 'amd64') && (matrix.pkg_type == 'deb') }}
         uses: actions/download-artifact@v4
         with:
-          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
+          name: artifact-${{ matrix.goarch }}-${{ matrix.pkg_type }}
       - name: download arm64 artifacts
         if: ${{ (matrix.goarch == 'arm64') && (matrix.pkg_type == 'deb') }}
         uses: actions/download-artifact@v4
         with:
-          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
+          name: artifact-${{ matrix.goarch }}-${{ matrix.pkg_type }}
       - name: Upload built deb artifacts
         if: ${{ matrix.pkg_type == 'deb'}}
         uses: svenstaro/upload-release-action@2.9.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          file: ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
+          file: ./${{ env.APP_NAME }}_${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}
           release_name: ${{ needs.build_amd64_release.outputs.version }}
           tag: v${{ needs.build_amd64_release.outputs.version }}
 
@@ -174,7 +170,6 @@ jobs:
     strategy:
       matrix:
         goos: [linux]
-        ziti_type: [router]
         goarch: [amd64, arm64]
         pkg_type: [deb]
         distro_name: [focal, jammy, noble]
@@ -191,7 +186,7 @@ jobs:
       #     JF_USER: ${{ secrets.JF_USER }}
       #     JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
       - name: Upload DEB to Artifactory with jFrog CLI
-        if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+        if: ${{ matrix.pkg_type == 'deb'}}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -200,8 +195,8 @@ jobs:
             curl -Ls  "$(jq -r .browser_download_url <<< "$asset")" -H "Accept: application/vnd.github.v3+json" --output ./"$(jq -r .name <<< "$asset")"
             ls -l ./
       #     jf rt upload /
-      #     ./${{ env.APP_NAME }}-${{ matrix.ziti_type }}-${{ needs.build_amd64_release.outputs.version }}.${{ matrix.goarch }}.${{ matrix.pkg_type }} /
-      #     netfoundry-deb-stable/pool/zfw-router/${{ matrix.distro_name }}/${{ matrix.goarch }} /
+      #     ./${{ env.APP_NAME }}-${{ needs.build_amd64_release.outputs.version }}.${{ matrix.goarch }}.${{ matrix.pkg_type }} /
+      #     netfoundry-deb-stable/pool/zfw-zet/${{ matrix.distro_name }}/${{ matrix.goarch }} /
       #     --deb=${{ matrix.distro_name }}/main/${{ matrix.goarch }} /
       #     --url https://netfoundry.jfrog.io/artifactory/ /
       #     --recursive=false /
