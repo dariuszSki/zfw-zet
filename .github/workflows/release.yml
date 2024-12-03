@@ -192,6 +192,8 @@ jobs:
           JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
       - name: Upload DEB to Artifactory with jFrog CLI
         if: ${{ matrix.pkg_type == 'deb'}} &&  ${{ matrix.ziti_type == 'router'}}
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: >
             asset=$(gh api /repos/dariuszski/zfw-zet/releases --jq '( last ((.[].assets | sort_by(.created_at)).[] | select(.name | endswith("${{ needs.build_amd64_release.outputs.version }}_${{ matrix.goarch }}.${{ matrix.pkg_type }}"))))')
