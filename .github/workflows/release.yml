@@ -147,7 +147,7 @@ jobs:
 
     steps:
       - name: download x86 artifacts
-        if: ${{ (matrix.goarch == 'amd64') && (matrix.pkg_type != 'deb') }}
+        if: ${{ (matrix.goarch == 'amd64') && (matrix.pkg_type == 'deb') }}
         uses: actions/download-artifact@v4
         with:
           name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
