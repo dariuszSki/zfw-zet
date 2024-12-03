@@ -65,59 +65,59 @@ jobs:
           path: |
             ./*.deb
   
-  # build_arm64_release:
-  #   runs-on: [self-hosted, linux, ARM64]
-  #   outputs:
-  #     version: ${{ steps.version.outputs.version }}
-  #   strategy:
-  #     matrix: 
-  #       goos: [linux]
-  #       ziti_type: [router]
-  #       goarch: [arm64]
-  #   steps:
-  #     - name: Check out code
-  #       uses: actions/checkout@v4
+  build_arm64_release:
+    runs-on: [ubuntu-22.04]
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    strategy:
+      matrix: 
+        goos: [linux]
+        ziti_type: [router]
+        goarch: [arm64]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
           
-  #     - name: Install Packages
-  #       run: |
-  #         sudo apt-get update -qq
-  #         sudo apt-get upgrade -yqq
-  #         sudo apt-get install -y jq 
+      - name: Install Packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get upgrade -yqq
+          sudo apt-get install -y jq 
       
-  #     - name: Get version
-  #       run: echo "version=`jq -r .version files/config.json`" >> $GITHUB_OUTPUT
-  #       id: version
+      - name: Get version
+        run: echo "version=`jq -r .version files/config.json`" >> $GITHUB_OUTPUT
+        id: version
 
-  #     - name: Deb directory
-  #       run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
-  #       id: deb_dir
+      - name: Deb directory
+        run: echo "deb_dir=${{ env.APP_NAME }}-${{ matrix.ziti_type }}_${{ steps.version.outputs.version }}_${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+        id: deb_dir
         
-  #     - name: Deb Object File
-  #       run: |
-  #         mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
-  #         touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-  #         mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+      - name: Deb Object File
+        run: |
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN
+          touch ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Package: ${{ env.APP_NAME }}-${{ matrix.ziti_type }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Version: ${{ steps.version.outputs.version }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
+          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
 
-  #     - name: Build deb package    
-  #       run: |
-  #         dpkg-deb --build -Z gzip --root-owner-group ${{ steps.deb_dir.outputs.deb_dir }}
+      - name: Build deb package    
+        run: |
+          dpkg-deb --build -Z gzip --root-owner-group ${{ steps.deb_dir.outputs.deb_dir }}
                       
-  #     - uses: actions/upload-artifact@v4
-  #       with:
-  #         name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
-  #         path: |
-  #           ./*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-deb
+          path: |
+            ./*.deb
           
   deploy_release:
     runs-on: ubuntu-22.04
     needs:
       - build_amd64_release
-      # - build_arm64_release
+      - build_arm64_release
     strategy:
       matrix:
         goos: [linux]
@@ -136,14 +136,14 @@ jobs:
     runs-on: ubuntu-22.04
     needs:
       - build_amd64_release
-      # - build_arm64_release
+      - build_arm64_release
       - deploy_release
     strategy:
       matrix:
         goos: [linux]
-        ziti_type: [tunnel, router]
+        ziti_type: [router]
         goarch: [amd64, arm64]
-        pkg_type: [deb, rpm]
+        pkg_type: [deb]
         distro_name: [focal, jammy, noble]
 
     steps:
@@ -152,11 +152,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
-      # - name: download arm64 artifacts
-      #   if: ${{ (matrix.goarch == 'arm64') && (matrix.pkg_type == 'deb') }}
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
+      - name: download arm64 artifacts
+        if: ${{ (matrix.goarch == 'arm64') && (matrix.pkg_type == 'deb') }}
+        uses: actions/download-artifact@v4
+        with:
+          name: artifact-${{ matrix.ziti_type }}-${{ matrix.goarch }}-${{ matrix.pkg_type }}
       - name: Upload built deb artifacts
         if: ${{ matrix.pkg_type == 'deb'}}
         uses: svenstaro/upload-release-action@2.9.0
