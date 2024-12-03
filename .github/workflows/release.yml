@@ -46,7 +46,7 @@ jobs:
           echo Architecture: ${{ matrix.goarch }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Maintainer: ${{ env.MAINTAINER }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
           echo Description: ${{ env.DESC }} >> ${{ steps.deb_dir.outputs.deb_dir }}/DEBIAN/control
-          mkdir -p ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
+          mkdir ${{ steps.deb_dir.outputs.deb_dir }}/usr/lib/systemd/system/ziti-edge-tunnel.service.d
 
       - name: Set Deb Predepends
         run: |
